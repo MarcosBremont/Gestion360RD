@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function role() { return request.auth.token.get('role', 'citizen'); }
+    function isAdmin() { return signedIn() && role() == 'admin'; }
+    function isEditor() { return signedIn() && (role() == 'editor' || role() == 'admin'); }
+
+    function validReview(uid) {
+      return signedIn() && request.auth.uid == uid
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && request.resource.data.keys().hasOnly(['rating', 'comment', 'authorName', 'authorUid', 'createdAt'])
+        && request.resource.data.authorUid == uid
+        && request.resource.data.rating is int && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+        && request.resource.data.comment is string && request.resource.data.comment.size() <= 500
+        && request.resource.data.authorName is string && request.resource.data.authorName.size() <= 40;
+    }
+
+    // Contenido público: lectura abierta, escritura editor/admin
+    match /places/{id} {
+      allow read: if resource.data.status == 'published' || isEditor();
+      allow write: if isEditor();
+      // Reseñas: una por persona (el ID es su uid) y solo con cuenta real (no anónima).
+      match /reviews/{uid} {
+        allow read: if true;
+        allow create, update: if validReview(uid)
+          && get(/databases/$(database)/documents/places/$(id)).data.status == 'published';
+        allow delete: if signedIn() && (request.auth.uid == uid || isEditor());
+      }
+    }
+    match /events/{id}     { allow read: if resource.data.status == 'published' || isEditor(); allow write: if isEditor(); }
+    match /businesses/{id} {
+      allow read: if resource.data.status == 'published' || isEditor();
+      allow write: if isEditor();
+      match /reviews/{uid} {
+        allow read: if true;
+        allow create, update: if validReview(uid)
+          && get(/databases/$(database)/documents/businesses/$(id)).data.status == 'published';
+        allow delete: if signedIn() && (request.auth.uid == uid || isEditor());
+      }
+    }
+    match /alerts/{id}     { allow read: if resource.data.status == 'published' || isEditor(); allow write: if isEditor(); }
+    match /surveys/{id}    { allow read: if true; allow write: if isEditor();
+      match /responses/{uid} { allow create: if signedIn() && request.auth.uid == uid; allow read: if isAdmin(); }
+    }
+    match /weather/{id}    { allow read: if true; allow write: if false; } // solo Cloud Functions
+
+    // Proyección pública del mapa: solo escribe Cloud Functions (Admin SDK)
+    match /publicReports/{id} { allow read: if true; allow write: if isAdmin(); } // Admin SDK (Functions) también escribe
+
+    // Reportes: el dueño crea y lee los suyos; admin y brigada gestionan
+    match /reports/{id} {
+      allow create: if signedIn()
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.category in ['bache','basura','semaforo','alumbrado']
+        && request.resource.data.get('description', '').size() <= 500
+        && id == request.resource.data.clientId;
+      allow read: if signedIn() && (resource.data.reporterUid == request.auth.uid || isAdmin() || role() == 'brigade');
+      allow update: if isAdmin()
+        || (role() == 'brigade' && resource.data.assignedTo in request.auth.token.get('brigades', []))
+        || (signedIn() && resource.data.reporterUid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['citizenConfirmation', 'updatedAt'])
+            && request.resource.data.citizenConfirmation in ['yes', 'no']);
+      allow delete: if false;
+      // Foto del ciudadano (bytes en Firestore): solo el dueño y el personal. Se crea en el mismo lote que el reporte.
+      match /private/{doc} {
+        allow create: if signedIn() && getAfter(/databases/$(database)/documents/reports/$(id)).data.reporterUid == request.auth.uid;
+        allow read: if signedIn() && (get(/databases/$(database)/documents/reports/$(id)).data.reporterUid == request.auth.uid || isAdmin() || role() == 'brigade');
+        allow update, delete: if false;
+      }
+      // Evidencia del trabajo terminado: pública (transparencia)
+      match /evidence/{eid} {
+        allow read: if true;
+        allow write: if isAdmin() || role() == 'brigade';
+      }
+      match /timeline/{eid} {
+        allow read: if signedIn() && (get(/databases/$(database)/documents/reports/$(id)).data.reporterUid == request.auth.uid || isAdmin() || role() == 'brigade');
+        allow write: if isAdmin() || role() == 'brigade';
+      }
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow update: if signedIn() && request.auth.uid == uid
+        && !('role' in request.resource.data.diff(resource.data).affectedKeys());
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.get('role', 'citizen') == 'citizen';
+    }
+    match /brigades/{id} { allow read, write: if isAdmin(); }
+    match /notifications/{uid}/items/{id} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if isAdmin(); // modo sin Cloud Functions: el panel crea el aviso
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+    }
+  }
+}

@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+:root {
+  --navy: #0f2a43;
+  --azul: #2f74e8;
+  --azul-suave: #dbe8fb;
+  --muted: #5d7288;
+  --card: rgba(255, 255, 255, 0.72);
+  --card-solid: #ffffff;
+  --card-border: rgba(255, 255, 255, 0.95);
+  --chip: rgba(255, 255, 255, 0.65);
+  --shadow: 0 10px 30px -12px rgba(30, 70, 120, 0.25);
+
+  --st-pendiente: #e0a100;
+  --st-proceso: #2f74e8;
+  --st-solucionado: #2e9d5b;
+  --st-rechazado: #7a857f;
+
+  --background: #eaf1fb;
+  --foreground: var(--navy);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --navy: #eaf1fb;
+    --azul: #5b97f5;
+    --azul-suave: #1d3a63;
+    --muted: #9fb3c8;
+    --card: rgba(24, 42, 66, 0.72);
+    --card-solid: #182a42;
+    --card-border: rgba(255, 255, 255, 0.07);
+    --chip: rgba(255, 255, 255, 0.08);
+    --shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+    --background: #0b1a2b;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-navy: var(--navy);
+  --color-azul: var(--azul);
+  --color-azul-suave: var(--azul-suave);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-card-solid: var(--card-solid);
+  --color-chip: var(--chip);
+  --color-st-pendiente: var(--st-pendiente);
+  --color-st-proceso: var(--st-proceso);
+  --color-st-solucionado: var(--st-solucionado);
+  --color-st-rechazado: var(--st-rechazado);
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  min-height: 100dvh;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+  background:
+    radial-gradient(120% 60% at 0% 0%, #cfe3fa 0%, transparent 60%),
+    radial-gradient(90% 50% at 100% 30%, #dcefee 0%, transparent 60%),
+    linear-gradient(180deg, #e8f0fb 0%, #f3f7fc 100%);
+  background-attachment: fixed;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background:
+      radial-gradient(120% 60% at 0% 0%, #17335a 0%, transparent 60%),
+      radial-gradient(90% 50% at 100% 30%, #12383f 0%, transparent 60%),
+      linear-gradient(180deg, #0b1a2b 0%, #0a1523 100%);
+    background-attachment: fixed;
+  }
+}
+
+/* Tarjeta de vidrio */
+.glass {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  border-radius: 28px;
+}
+
+.pb-nav {
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.6); opacity: 0.7; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.pulse-ring { animation: pulse-ring 2.4s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-ring { animation: none; opacity: 0.35; }
+}
