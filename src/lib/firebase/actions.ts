@@ -77,6 +77,12 @@ export function authMessage(e: unknown): string {
     "auth/popup-closed-by-user": "Cerraste la ventana de Google antes de terminar.",
     "auth/network-request-failed": "Sin conexión. Inténtalo cuando tengas señal.",
     "auth/operation-not-allowed": "Este método de acceso no está activado en Firebase.",
+    "auth/unauthorized-domain": "Este sitio no está autorizado en Firebase. Añade el dominio en Authentication → Configuración → Dominios autorizados.",
+    "auth/popup-blocked": "El navegador bloqueó la ventana de Google. Permite las ventanas emergentes para este sitio.",
+    "auth/cancelled-popup-request": "Se canceló el inicio de sesión. Inténtalo de nuevo.",
+    "auth/web-storage-unsupported": "Tu navegador bloquea el almacenamiento necesario. Desactiva el modo privado o la protección de rastreo para este sitio.",
+    "auth/too-many-requests": "Demasiados intentos. Espera unos minutos.",
   };
-  return map[code] ?? "No se pudo completar. Inténtalo de nuevo.";
+  if (!map[code]) console.error("[auth]", e);
+  return map[code] ?? `No se pudo completar${code ? ` (${code.replace("auth/", "")})` : ""}. Inténtalo de nuevo.`;
 }
